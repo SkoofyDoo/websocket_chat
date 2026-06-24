@@ -1,10 +1,12 @@
 'use client'
 
 import { useEffect, useState, useRef } from "react"
+import { useParams, useSearchParams } from "next/navigation"
 import { io, Socket } from "socket.io-client"
 
 type Message = {
     id: string
+    user: string
     text: string
 }
 
@@ -13,13 +15,18 @@ export default function Client() {
     const [text, setText] = useState<string>('')
     const socketRef = useRef<Socket | null>(null)
     
+    const params = useParams<{id: string; name: string;}>()
+    const searchParams = useSearchParams()
     
+    const user = searchParams.get('name') ?? 'Anonym'
+    const room = params?.id ?? 'Lobby'
+
     useEffect(() => {
         const socket = io('http://localhost:3000')
         socketRef.current = socket
         socket.on('connect', () => {
             console.log('Connected to Server: ', socket.id)
-            
+            socket.emit('room:join', {room: room, user: user})
         })
         socket.on('message:new', (msg: Message) => {
             setMessages((prev) => [...prev, msg])
@@ -44,7 +51,7 @@ export default function Client() {
         <div  border-red-500>   
             <input style={{border: '1px solid red'}} type="text" value={text} onChange={(e) => setText(e.target.value)} />
             <button style={{border: '1px solid red'}} onClick={handleSendMessage}>Send</button>
-            {messages.map((m, i) => <div key={i}>{m.text}</div>)}
+            {messages.map((m, i) => <div key={i}><b>{m.user}</b>: {m.text}</div>)}
         </div>
     )
    

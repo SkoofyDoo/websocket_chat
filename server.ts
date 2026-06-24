@@ -9,7 +9,7 @@ const app = next({dev})
 // Handler for request / response handling of nextjs
 const handler = app.getRequestHandler()
 
-// Create a HTTP Server
+// Create a HTTP Server with HealthCheck Endpoint
 const httpServer = createServer((req, res) => {
     if(req.url === '/health') {
         res.statusCode = 200
@@ -29,16 +29,24 @@ app.prepare().then(() => {
     // Handle socket connections
     io.on('connection', (socket) => {
         console.log(`Socket Connetected: ${socket.id}`)
-        socket.on('message:send', (text) => {
-            io.emit('message:new', {id: socket.id, text})
-            console.log(`Message Sent: ${text}`)
-           
+        socket.on('room:join', ({room, user}) => {
+            socket.data.room = room
+            socket.data.user = user
+            socket.join(room)
+            console.log(`User ${user} joined room ${room}`)
+
+            io.to(room).emit('user:joined', {id: socket.id, user})    
+            console.log(`User ${user} joined room ${room}`)
         })
+            socket.on('message:send', (text) => {
+                const room = socket.data.room
+                io.to(room).emit('message:new', {id: socket.id,  user: socket.data.user, text})
+                console.log(`${socket.data.user} sent message: ${text}`)
+        })
+        
     })
-    io.on('error', (socketError) => {
-        console.error('Error: ', socketError)
-    })
-    httpServer.listen("3000")
+    
+    httpServer.listen(3000)
     console.log('Server is listening on port 3000')
 })
 
